@@ -1,7 +1,4 @@
-"""Utility functions"""
-
-
-def para_text_replace(para, find_string: str, replace_string: str):
+def para_text_replace(para, find_string, replace_string):
     """Function to replace text in a paragraph
 
     This function replaces text in a paragraph while respecting the formatting.
@@ -49,6 +46,9 @@ def fix_quotes(input_string: str) -> str:
 
     Args:
         input_string (str): String to fix quotes in.
+    
+    Returns:
+        str: String with fixed quotes.
     """
     return (
         input_string.replace("’", "'")

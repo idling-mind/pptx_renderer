@@ -1,8 +1,12 @@
+"""Main Module"""
+
 import re
 from os import PathLike
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 from warnings import warn as warning
+from functools import partial
+from . import plugins
 
 from PIL import Image
 from pptx import Presentation
@@ -10,6 +14,7 @@ from pptx import Presentation
 from .exceptions import RenderError
 from .utils import fix_quotes, para_text_replace
 
+PLUGINS = [plugins.image, plugins.table]
 
 class PPTXRenderer:
     """PPTX Renderer class
@@ -21,13 +26,36 @@ class PPTXRenderer:
         template_path (str): Path to the PPTX template.
     """
 
-    def __init__(self, template_path: Union[str, bytes, PathLike]):
+    def __init__(self, template_path: Union[str, PathLike]):
         self.template_path = template_path
+        self.plugins = {}
         self.namespace = {}
+        for plugin in PLUGINS:
+            self.register_plugin(plugin.__name__, plugin)
+    
+    def register_plugin(self, name: str, func: callable):
+        """Register a plugin function.
+
+        The plugin function should take 2 or more arguments. The first argument
+        is the result of evaluating the python statement. The second argument is
+        a dictionary containing the following keys:
+            - shape: The pptx shape object where the placeholder is present
+            - slide: The pptx slide object where the placeholder is present
+            - slide_no: The slide number where the placeholder is present
+        The remaining arguments are the arguments passed to the plugin function
+
+        Args:
+            name (str): Name of the plugin.
+            func (callable): Function to be registered.
+
+        Returns:
+            None
+        """
+        self.plugins[name] = func
 
     def render(
         self,
-        output_path: Union[str, bytes, PathLike],
+        output_path: Union[str, PathLike],
         methods_and_params: Optional[Dict[str, Any]] = None,
         skip_failed: bool = False,
     ) -> None:
@@ -75,7 +103,6 @@ class PPTXRenderer:
                                 f"Failed to evaluate '{parts[0]}'."
                             ) from ex
                         if len(parts) > 1 and parts[1].strip().lower() == "image":
-                            result = str(result)
                             if not Path(result).exists():
                                 if skip_failed:
                                     warning(
@@ -134,6 +161,24 @@ class PPTXRenderer:
                                 raise RenderError(
                                     f"Failed to render table from {parts[0]}."
                                 ) from ex
+                        elif len(parts) > 1:
+                            namespace = {}
+                            ppt_data = {
+                                "shape": shape,
+                                "slide": slide,
+                                "slide_no": slide_no,
+                            }
+                            for plugin_name, plugin in self.plugins.items():
+                                func = partial(plugin, result, ppt_data)
+                                namespace[plugin_name] = func 
+                            try:
+                                exec(fix_quotes(parts[1]), namespace)
+                            except Exception as ex:
+                                if skip_failed:
+                                    warning(
+                                        f"Failed to render {parts[0]} in slide {slide_no+1}"
+                                    )
+                                    continue
                         else:
                             for paragraph in shape.text_frame.paragraphs:
                                 para_text_replace(
