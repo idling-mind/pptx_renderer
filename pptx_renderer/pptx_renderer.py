@@ -8,13 +8,12 @@ from warnings import warn as warning
 from functools import partial
 from . import plugins
 
-from PIL import Image
 from pptx import Presentation
 
 from .exceptions import RenderError
 from .utils import fix_quotes, para_text_replace
 
-PLUGINS = [plugins.image, plugins.table]
+PLUGINS = [plugins.image, plugins.video, plugins.table]
 
 class PPTXRenderer:
     """PPTX Renderer class
@@ -102,74 +101,17 @@ class PPTXRenderer:
                             raise RenderError(
                                 f"Failed to evaluate '{parts[0]}'."
                             ) from ex
-                        if len(parts) > 1 and parts[1].strip().lower() == "image":
-                            if not Path(result).exists():
-                                if skip_failed:
-                                    warning(
-                                        f"Image '{result}' in slide {slide_no+1} not found"
-                                    )
-                                    continue
-                                raise RenderError(f"Image '{result}' not found.")
-                            with Image.open(result) as img:
-                                im_width, im_height = img.size
-                            # add picture preserving aspect ratio
-                            ar_image = im_width / im_height
-                            ar_shape = shape.width / shape.height
-                            if ar_image >= ar_shape:
-                                slide.shapes.add_picture(
-                                    result,
-                                    shape.left,
-                                    shape.top,
-                                    shape.width,
-                                    shape.width / ar_image,
-                                )
-                            else:
-                                slide.shapes.add_picture(
-                                    result,
-                                    shape.left,
-                                    shape.top,
-                                    shape.height * ar_image,
-                                    shape.height,
-                                )
-                            # Delete the shape after image is inserted
-                            sp = shape._sp
-                            sp.getparent().remove(sp)
-                        elif len(parts) > 1 and parts[1].strip().lower() == "table":
-                            try:
-                                all_rows = list(result)
-                                first_row_list = list(all_rows[0])
-                                table_shape = slide.shapes.add_table(
-                                    len(all_rows),
-                                    len(first_row_list),
-                                    shape.left,
-                                    shape.top,
-                                    shape.width,
-                                    shape.height,
-                                )
-                                for row, row_data in enumerate(result):
-                                    for col, val in enumerate(row_data):
-                                        table_shape.table.cell(row, col).text = str(val)
-                                # Delete the shape after image is inserted
-                                sp = shape._sp
-                                sp.getparent().remove(sp)
-                            except Exception as ex:
-                                if skip_failed:
-                                    warning(
-                                        f"Failed to render table {parts[0]} in slide {slide_no+1}"
-                                    )
-                                    continue
-                                raise RenderError(
-                                    f"Failed to render table from {parts[0]}."
-                                ) from ex
-                        elif len(parts) > 1:
+                        if len(parts) > 1:
                             namespace = {}
-                            ppt_data = {
+                            context = {
+                                "result": result,
+                                "presentation": outppt,
                                 "shape": shape,
                                 "slide": slide,
                                 "slide_no": slide_no,
                             }
                             for plugin_name, plugin in self.plugins.items():
-                                func = partial(plugin, result, ppt_data)
+                                func = partial(plugin, context)
                                 namespace[plugin_name] = func 
                             try:
                                 exec(fix_quotes(parts[1]), namespace)
@@ -179,6 +121,9 @@ class PPTXRenderer:
                                         f"Failed to render {parts[0]} in slide {slide_no+1}"
                                     )
                                     continue
+                                raise RenderError(
+                                    f"Failed to render {parts[0]} in slide {slide_no+1}"
+                                ) from ex
                         else:
                             for paragraph in shape.text_frame.paragraphs:
                                 para_text_replace(
