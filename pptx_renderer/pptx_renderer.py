@@ -38,9 +38,9 @@ class PPTXRenderer:
         The plugin function should take 2 or more arguments. The first argument
         is the result of evaluating the python statement. The second argument is
         a dictionary containing the following keys:
-            - shape: The pptx shape object where the placeholder is present
-            - slide: The pptx slide object where the placeholder is present
-            - slide_no: The slide number where the placeholder is present
+        - shape: The pptx shape object where the placeholder is present
+        - slide: The pptx slide object where the placeholder is present
+        - slide_no: The slide number where the placeholder is present
         The remaining arguments are the arguments passed to the plugin function
 
         Args:

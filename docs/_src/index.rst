@@ -56,7 +56,7 @@ command.
    
    pptx-renderer input_template.pptx output_file.pptx
 
-See :ref:`Running from command line`
+See :ref:`command-line`
 
 .. toctree::
    :maxdepth: 2

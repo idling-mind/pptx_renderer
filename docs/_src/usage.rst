@@ -43,6 +43,7 @@ and there is a function call ``{{{calculate_square(my_variable)}}}`` in another
       }
    )
 
+
 Inserting images
 ----------------
 
@@ -54,24 +55,27 @@ whose value is the path to the image to be inserted.
 
 As you can see, ``image`` is a function. You can pass in the following arguments
 to the function. All of these are optional.
-- ``preserve_aspect_ratio``: If set to ``True``, the image will be resized to fit
-  the shape. If set to ``False``, the image will be stretched to fit the shape.
-  Default is ``True``.
-- ``remove_shape``: If set to ``True``, the shape will be removed after the image
-  is inserted. Default is ``True``.
-- ``horizontal_alignment``: The horizontal alignment of the image inside the shape.
-  Can be one of ``left``, ``center``, ``right``. Default is ``left``.
-- ``vertical_alignment``: The vertical alignment of the image inside the shape.
-  Can be one of ``top``, ``center``, ``bottom``. Default is ``top``.
+
+* | ``preserve_aspect_ratio``: If set to ``True``, the image will be resized to fit
+  | the shape. If set to ``False``, the image will be stretched to fit the shape.
+  | Default is ``True``.
+* | ``remove_shape``: If set to ``True``, the shape will be removed after the image
+  | is inserted. Default is ``True``.
+* | ``horizontal_alignment``: The horizontal alignment of the image inside the shape.
+  | Can be one of ``left``, ``center``, ``right``. Default is ``left``.
+* | ``vertical_alignment``: The vertical alignment of the image inside the shape.
+  | Can be one of ``top``, ``center``, ``bottom``. Default is ``top``.
 
 Inserting Videos
 ----------------
 
 Insert a video in the same height and width as the shape. The placeholder
-should evaluate to a path to the video file.
+should evaluate to a path to the video file. The placeholder should be specified
+as ``{{{path_to_video:video()}}}``.
 
-- ``remove_shape``: If set to ``True``, the shape will be removed after the image
-  is inserted. Default is ``True``.
+* | ``remove_shape``: If set to ``True``, the shape will be removed after the image
+  | is inserted. Default is ``True``.
+
 
 Inserting tables
 ----------------
@@ -82,20 +86,21 @@ should be placed. Then insert a placeholder text in the format
 ``{{{table_data:table()}}}`` where ``table_data`` is a variable whose value is a
 list of lists. Just like ``image``, ``table`` is also a function. You can pass
 in the following arguments to the function. All of these are optional.
-- ``first_row``: If set to ``True``, the first row of the table will be treated
-  as the header row. Default is ``True``.
-- ``first_column``: If set to ``True``, the first column of the table will be
-   treated as the header column. Default is ``False``.
-- ``last_row``: If set to ``True``, the last row of the table will be treated
-  as the footer row. Default is ``False``.
-- ``last_column``: If set to ``True``, the last column of the table will be
-   treated as the footer column. Default is ``False``.
-- ``horizontal_banding``: If set to ``True``, the table will have horizontal
-  banding. Default is ``True``.
-- ``vertical_banding``: If set to ``True``, the table will have vertical
-  banding. Default is ``False``.
-- ``remove_shape``: If set to ``True``, the shape will be removed after the table
-  is inserted. Default is ``True``.
+
+* | ``first_row``: If set to ``True``, the first row of the table will be treated
+  | as the header row. Default is ``True``.
+* | ``first_column``: If set to ``True``, the first column of the table will be
+  | treated as the header column. Default is ``False``.
+* | ``last_row``: If set to ``True``, the last row of the table will be treated
+  | as the footer row. Default is ``False``.
+* |  ``last_column``: If set to ``True``, the last column of the table will be
+  |  treated as the footer column. Default is ``False``.
+* |  ``horizontal_banding``: If set to ``True``, the table will have horizontal
+  |  banding. Default is ``True``.
+* |  ``vertical_banding``: If set to ``True``, the table will have vertical
+  |  banding. Default is ``False``.
+* |  ``remove_shape``: If set to ``True``, the shape will be removed after the table
+  |  is inserted. Default is ``True``.
 
 
 
@@ -131,17 +136,17 @@ The ``image`` and ``table`` functions are implemented as plugins. You can write
 your own plugins and use them in the presentation. To write a plugin, do the
 following steps
 
-1. Create a plugin function: Create a function which accepts one or more
-arguments. The first argument will be the a dictionary containing the
-following key, value pairs.
+1. | Create a plugin function: Create a function which accepts one or more
+   | arguments. The first argument will be the a dictionary containing the
+   | following key, value pairs.
 
-- ``result``: The result of the expression which was evaluated inside the
-  placeholder text. For example, if the placeholder text is ``{{{5*6}}}``,
-  the result will be ``30``.
-- ``shape``: The shape object where the placeholder was found.
-- ``slide``: The slide object where the shape was found.
-- ``slide_no``: The slide number where the shape was found. (First slide is 0)
-- ``presentation``: The presentation object where the slide was found.
+* | ``result``: The result of the expression which was evaluated inside the
+  | placeholder text. For example, if the placeholder text is ``{{{5*6}}}``,
+  | the result will be ``30``.
+* ``shape``: The shape object where the placeholder was found.
+* ``slide``: The slide object where the shape was found.
+* ``slide_no``: The slide number where the shape was found. (First slide is 0)
+* ``presentation``: The presentation object where the slide was found.
 
 The rest of the arguments will be passed in as arguments to the plugin function
 during execution.
@@ -165,9 +170,9 @@ and an example usage is as follows.
   {{{path_to_image:image(preserve_aspect_ratio=True, horizontal_alignment="center")}}}
 
 
-2. Register the plugin: Register the plugin function using the ``register_plugin``
-method of the ``PPTXRenderer`` class. The first argument to this method is the
-name of the plugin. The second argument is the plugin function.
+2. | Register the plugin: Register the plugin function using the ``register_plugin``
+   | method of the ``PPTXRenderer`` class. The first argument to this method is the
+   | name of the plugin. The second argument is the plugin function.
 
 .. code-block:: python
 
