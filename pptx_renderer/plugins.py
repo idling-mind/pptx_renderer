@@ -61,6 +61,8 @@ def video(
     remove_shape=True,
     horizontal_alignment="left",
     vertical_alignment="top",
+    poster_image=None,
+    mime_type="video/mp4",
 ):
     result = str(context["result"])
     slide = context["slide"]
@@ -98,8 +100,8 @@ def video(
         top,
         width,
         height,
-        poster_frame_image=None,
-        mime_type="video/mp4",
+        poster_frame_image=poster_image,
+        mime_type=mime_type,
     )
     # Delete the shape after image is inserted
     if remove_shape:
