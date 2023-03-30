@@ -65,7 +65,6 @@ See :ref:`Running from command line`
    usage
    commandline
    api
-   examples   
 
 
 Indices and tables
