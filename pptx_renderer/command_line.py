@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 import click
 from pptx_renderer import PPTXRenderer
 
@@ -18,7 +19,7 @@ from pptx_renderer import PPTXRenderer
     "--input",
     type=click.Path(exists=True),
     help=(
-        "Path to a json file with key value pairs of variables used in the template",
+        "Path to a json file with key value pairs of variables used in the template"
     ),
 )
 def main(template_path, output_path, fail_on_error, input):
@@ -28,8 +29,10 @@ def main(template_path, output_path, fail_on_error, input):
 
     OUTPUT_PATH: Path to the rendered output ppt
     """
+    if input:
+        input = Path(input)
     p = PPTXRenderer(template_path)
-    extra_variables = json.loads(input.read()) if input else {}
+    extra_variables = json.loads(input.read_text()) if input else {}
     p.namespace.update(extra_variables)
     p.render(output_path, {}, skip_failed=not (fail_on_error))
 
