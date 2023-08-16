@@ -9,7 +9,7 @@ from functools import partial
 from . import plugins
 
 from pptx import Presentation
-from pptx.enum.shapes import GROUP
+from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 from .exceptions import RenderError
 from .utils import fix_quotes, para_text_replace
@@ -85,7 +85,7 @@ class PPTXRenderer:
                     handle_text_frame(shape)
                 if shape.has_table:
                     handle_table(shape)
-                if shape.shape_type == GROUP:
+                if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
                     handle_shapes(shape.shapes)
 
         def handle_text_frame(shape):
