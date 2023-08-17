@@ -9,6 +9,7 @@ from functools import partial
 from . import plugins
 
 from pptx import Presentation
+from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 from .exceptions import RenderError
 from .utils import fix_quotes, para_text_replace
@@ -74,18 +75,69 @@ class PPTXRenderer:
             raise (FileNotFoundError(f"{self.template_path} not found"))
         outppt = Presentation(self.template_path)
         self.namespace.update(methods_and_params)
-        for slide_no, slide in enumerate(outppt.slides):
-            if slide.has_notes_slide:
-                python_code = re.search(
-                    r"```python([\s\S]*)```",
-                    fix_quotes(slide.notes_slide.notes_text_frame.text),
-                    re.MULTILINE,
-                )
-                if python_code:
-                    exec(python_code.group(1), self.namespace)
-            for shape in list(slide.shapes):
+
+        #function to recurse through list of shapes
+        #hand off to function to process text frames and tables
+        #recurse into handle_shapes function if group of shapes are found
+        def handle_shapes(shapes):
+            for shape in list(shapes):
                 if shape.has_text_frame:
-                    matches = re.finditer(r"{{{(.*)}}}", shape.text)
+                    handle_text_frame(shape)
+                if shape.has_table:
+                    handle_table(shape)
+                if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+                    handle_shapes(shape.shapes)
+
+        def handle_text_frame(shape):
+            matches = re.finditer(r"{{{(.*)}}}", shape.text)
+            if not matches:
+                return
+            for match_assignment in matches:
+                parts = match_assignment.group(1).split(":")
+                try:
+                    result = eval(fix_quotes(parts[0]), self.namespace)
+                except Exception as ex:
+                    if skip_failed:
+                        warning(
+                            f"Evaluation of '{parts[0]}' in slide {slide_no+1} failed"
+                        )
+                        return
+                    raise RenderError(
+                        f"Failed to evaluate '{parts[0]}'."
+                    ) from ex
+                if len(parts) > 1:
+                    namespace = self.namespace.copy()
+                    context = {
+                        "result": result,
+                        "presentation": outppt,
+                        "shape": shape,
+                        "slide": slide,
+                        "slide_no": slide_no,
+                    }
+                    for plugin_name, plugin in self.plugins.items():
+                        func = partial(plugin, context)
+                        namespace[plugin_name] = func 
+                    try:
+                        exec(fix_quotes(parts[1]), namespace)
+                    except Exception as ex:
+                        if skip_failed:
+                            warning(
+                                f"Failed to render {parts[0]} in slide {slide_no+1}"
+                            )
+                            return
+                        raise RenderError(
+                            f"Failed to render {parts[0]} in slide {slide_no+1}"
+                        ) from ex
+                else:
+                    for paragraph in shape.text_frame.paragraphs:
+                        para_text_replace(
+                            paragraph, match_assignment.group(0), result
+                        )
+        
+        def handle_table(shape):
+            for row in shape.table.rows:
+                for cell in row.cells:
+                    matches = re.finditer(r"{{{(.*)}}}", cell.text)
                     if not matches:
                         continue
                     for match_assignment in matches:
@@ -101,55 +153,20 @@ class PPTXRenderer:
                             raise RenderError(
                                 f"Failed to evaluate '{parts[0]}'."
                             ) from ex
-                        if len(parts) > 1:
-                            namespace = self.namespace.copy()
-                            context = {
-                                "result": result,
-                                "presentation": outppt,
-                                "shape": shape,
-                                "slide": slide,
-                                "slide_no": slide_no,
-                            }
-                            for plugin_name, plugin in self.plugins.items():
-                                func = partial(plugin, context)
-                                namespace[plugin_name] = func 
-                            try:
-                                exec(fix_quotes(parts[1]), namespace)
-                            except Exception as ex:
-                                if skip_failed:
-                                    warning(
-                                        f"Failed to render {parts[0]} in slide {slide_no+1}"
-                                    )
-                                    continue
-                                raise RenderError(
-                                    f"Failed to render {parts[0]} in slide {slide_no+1}"
-                                ) from ex
-                        else:
-                            for paragraph in shape.text_frame.paragraphs:
-                                para_text_replace(
-                                    paragraph, match_assignment.group(0), result
-                                )
-                if shape.has_table:
-                    for row in shape.table.rows:
-                        for cell in row.cells:
-                            matches = re.finditer(r"{{{(.*)}}}", cell.text)
-                            if not matches:
-                                continue
-                            for match_assignment in matches:
-                                parts = match_assignment.group(1).split(":")
-                                try:
-                                    result = eval(fix_quotes(parts[0]), self.namespace)
-                                except Exception as ex:
-                                    if skip_failed:
-                                        warning(
-                                            f"Evaluation of '{parts[0]}' in slide {slide_no+1} failed"
-                                        )
-                                        continue
-                                    raise RenderError(
-                                        f"Failed to evaluate '{parts[0]}'."
-                                    ) from ex
-                                for paragraph in cell.text_frame.paragraphs:
-                                    para_text_replace(
-                                        paragraph, match_assignment.group(0), result
-                                    )
+                        for paragraph in cell.text_frame.paragraphs:
+                            para_text_replace(
+                                paragraph, match_assignment.group(0), result
+                            )
+
+        for slide_no, slide in enumerate(outppt.slides):
+            if slide.has_notes_slide:
+                python_code = re.search(
+                    r"```python([\s\S]*)```",
+                    fix_quotes(slide.notes_slide.notes_text_frame.text),
+                    re.MULTILINE,
+                )
+                if python_code:
+                    exec(python_code.group(1), self.namespace)
+            #send list of shapes to handle_shapes function
+            handle_shapes(list(slide.shapes))
         outppt.save(output_path)
