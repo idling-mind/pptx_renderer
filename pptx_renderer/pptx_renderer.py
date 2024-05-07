@@ -93,7 +93,7 @@ class PPTXRenderer:
             if not matches:
                 return
             for match_assignment in matches:
-                parts = match_assignment.group(1).split(":")
+                parts = match_assignment.group(1).split(":", 1)
                 try:
                     result = eval(fix_quotes(parts[0]), self.namespace)
                 except Exception as ex:
@@ -141,7 +141,7 @@ class PPTXRenderer:
                     if not matches:
                         continue
                     for match_assignment in matches:
-                        parts = match_assignment.group(1).split(":")
+                        parts = match_assignment.group(1).split(":", 1)
                         try:
                             result = eval(fix_quotes(parts[0]), self.namespace)
                         except Exception as ex:
