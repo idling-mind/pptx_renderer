@@ -1,3 +1,4 @@
+from __future__ import annotations
 from pathlib import Path
 from PIL import Image
 from .exceptions import RenderError
@@ -5,11 +6,33 @@ from .exceptions import RenderError
 
 def image(
     context: dict,
-    preserve_aspect_ratio=True,
-    remove_shape=True,
-    horizontal_alignment="left",
-    vertical_alignment="top",
+    preserve_aspect_ratio: bool = True,
+    remove_shape: bool = True,
+    horizontal_alignment: str = "left",
+    vertical_alignment: str = "top",
+    crop: dict | None = None,
 ):
+    """Insert an image into the slide at the location of the placeholder.
+
+    Args:
+        context (dict): Dictionary containing the following keys:
+            - result: The result of evaluating the python statement.
+            - shape: The pptx shape object where the placeholder is present.
+            - slide: The pptx slide object where the placeholder is present.
+            - presentation: The output pptx presentation object.
+            - slide_no: The slide number where the placeholder is present.
+        preserve_aspect_ratio (bool, optional): Preserve the aspect ratio of the image.
+            Defaults to True.
+        remove_shape (bool, optional): Remove the shape after the image is inserted.
+            Defaults to True.
+        horizontal_alignment (str, optional): Horizontal alignment of the image.
+            Can be 'left', 'center', 'right'. Defaults to 'left'.
+        vertical_alignment (str, optional): Vertical alignment of the image.
+            Can be 'top', 'center', 'bottom'. Defaults to 'top'.
+        crop (dict, optional): Dictionary containing the crop values for the image.
+            The keys can be 'left', 'right', 'top', 'bottom'. Defaults to None.
+            The values are given in percentage of the image size.
+    """
     result = str(context["result"])
     slide = context["slide"]
     shape = context["shape"]
@@ -24,9 +47,9 @@ def image(
         height = shape.height
     elif ar_image >= ar_shape:
         width = shape.width
-        height = shape.width / ar_image
+        height = None
     else:
-        width = shape.height * ar_image
+        width = None
         height = shape.height
     if horizontal_alignment == "left":
         left = shape.left
@@ -40,13 +63,18 @@ def image(
         top = shape.top + (shape.height - height) / 2
     elif vertical_alignment == "bottom":
         top = shape.top + shape.height - height
-    slide.shapes.add_picture(
+    image = slide.shapes.add_picture(
         result,
         left,
         top,
         width,
         height,
     )
+    if crop:
+        image.crop_left = crop.get("left", 0)
+        image.crop_right = crop.get("right", 0)
+        image.crop_top = crop.get("top", 0)
+        image.crop_bottom = crop.get("bottom", 0)
     # Delete the shape after image is inserted
     if remove_shape:
         sp = shape._sp
@@ -59,6 +87,21 @@ def video(
     mime_type="video/mp4",
     remove_shape=True,
 ):
+    """Insert a video into the slide at the location of the placeholder.
+
+    Args:
+        context (dict): Dictionary containing the following keys:
+            - result: The result of evaluating the python statement.
+            - shape: The pptx shape object where the placeholder is present.
+            - slide: The pptx slide object where the placeholder is present.
+            - presentation: The output pptx presentation object.
+            - slide_no: The slide number where the placeholder is present.
+        poster_image (str, optional): Path to the poster image for the video.
+            Defaults to None.
+        mime_type (str, optional): Mime type of the video. Defaults to 'video/mp4'.
+        remove_shape (bool, optional): Remove the shape after the video is inserted.
+            Defaults to True.
+    """
     result = str(context["result"])
     slide = context["slide"]
     shape = context["shape"]
@@ -87,6 +130,23 @@ def table(
     vertical_banding=False,
     remove_shape=True,
 ):
+    """Insert a table into the slide at the location of the placeholder.
+
+    Args:
+        context (dict): Dictionary containing the following keys:
+            - result: The result of evaluating the python statement.
+            - shape: The pptx shape object where the placeholder is present.
+            - slide: The pptx slide object where the placeholder is present.
+            - slide_no: The slide number where the placeholder is present.
+        first_row (bool, optional): Show the first row as header. Defaults to True.
+        first_col (bool, optional): Show the first column as header. Defaults to False.
+        last_row (bool, optional): Show the last row as footer. Defaults to False.
+        last_col (bool, optional): Show the last column as footer. Defaults to False.
+        horizontal_banding (bool, optional): Show horizontal banding. Defaults to True.
+        vertical_banding (bool, optional): Show vertical banding. Defaults to False.
+        remove_shape (bool, optional): Remove the shape after the table is inserted.
+            Defaults to True.
+    """
     result = context["result"]
     shape = context["shape"]
     slide = context["slide"]

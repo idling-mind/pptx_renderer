@@ -3,7 +3,7 @@
 import re
 from os import PathLike
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, Callable
 from warnings import warn as warning
 from functools import partial
 from . import plugins
@@ -32,13 +32,15 @@ class PPTXRenderer:
         self.namespace = {}
         for plugin in PLUGINS:
             self.register_plugin(plugin.__name__, plugin)
-    
-    def register_plugin(self, name: str, func: callable):
+
+    def register_plugin(self, name: str, func: Callable):
         """Register a plugin function.
 
         The plugin function should take 2 or more arguments. The first argument
         is the result of evaluating the python statement. The second argument is
         a dictionary containing the following keys:
+        - result: The result of evaluating the python statement
+        - presentation: The output pptx presentation object
         - shape: The pptx shape object where the placeholder is present
         - slide: The pptx slide object where the placeholder is present
         - slide_no: The slide number where the placeholder is present
@@ -93,7 +95,7 @@ class PPTXRenderer:
             if not matches:
                 return
             for match_assignment in matches:
-                parts = match_assignment.group(1).split(":")
+                parts = match_assignment.group(1).split(":", 1)
                 try:
                     result = eval(fix_quotes(parts[0]), self.namespace)
                 except Exception as ex:
@@ -141,7 +143,7 @@ class PPTXRenderer:
                     if not matches:
                         continue
                     for match_assignment in matches:
-                        parts = match_assignment.group(1).split(":")
+                        parts = match_assignment.group(1).split(":", 1)
                         try:
                             result = eval(fix_quotes(parts[0]), self.namespace)
                         except Exception as ex:
