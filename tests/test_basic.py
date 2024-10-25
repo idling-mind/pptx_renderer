@@ -4,6 +4,7 @@ from pathlib import Path
 from pptx_renderer import PPTXRenderer
 from pptx_renderer.exceptions import RenderError
 import pytest
+from pptx import Presentation
 
 
 def mymethod(abc):
@@ -46,3 +47,16 @@ def test_render_skip_failed():
             skip_failed=True,
         )
     assert Path("output.pptx").exists()
+
+def test_multi_variable_textbox():
+    p = PPTXRenderer("template.pptx")
+    p.render(
+        "output.pptx",
+        {"mymethod": mymethod, "getimage": getimage, "mytable": mytable},
+        skip_failed=True,
+    )
+    prs = Presentation("output.pptx")
+    slide = prs.slides[0]
+    for shape in slide.shapes:
+        if hasattr(shape, "text") and shape.text.startswith("The value of X is"):
+            assert shape.text.strip() == "The value of X is 1 and the value of Y is 10."
