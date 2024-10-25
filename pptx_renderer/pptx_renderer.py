@@ -91,7 +91,7 @@ class PPTXRenderer:
                     handle_shapes(shape.shapes)
 
         def handle_text_frame(shape):
-            matches = re.finditer(r"{{{(.*)}}}", shape.text)
+            matches = re.finditer(r"{{{(.*?)}}}", shape.text)
             if not matches:
                 return
             for match_assignment in matches:
