@@ -3,7 +3,7 @@
 import re
 from os import PathLike
 from pathlib import Path
-from typing import Any, Dict, Optional, Union, Callable
+from typing import Any, Dict, Optional, Union, Callable, List
 from warnings import warn as warning
 from functools import partial
 from . import plugins
@@ -12,7 +12,7 @@ from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 from .exceptions import RenderError
-from .utils import fix_quotes, para_text_replace
+from .utils import fix_quotes, para_text_replace, copy_slide
 
 PLUGINS = [plugins.image, plugins.video, plugins.table]
 
@@ -60,6 +60,7 @@ class PPTXRenderer:
         output_path: Union[str, PathLike],
         methods_and_params: Optional[Dict[str, Any]] = None,
         skip_failed: bool = False,
+        loop_groups: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
         """Render PPTXRenderer template and save to output_path.
 
@@ -75,8 +76,10 @@ class PPTXRenderer:
         """
         if not Path(self.template_path).exists():
             raise (FileNotFoundError(f"{self.template_path} not found"))
-        outppt = Presentation(self.template_path)
+        template_ppt = Presentation(self.template_path)
         self.namespace.update(methods_and_params)
+        if not loop_groups:
+            loop_groups = []
 
         #function to recurse through list of shapes
         #hand off to function to process text frames and tables
@@ -105,13 +108,13 @@ class PPTXRenderer:
                         )
                         return
                     raise RenderError(
-                        f"Failed to evaluate '{parts[0]}'."
+                        f"Failed to evaluate '{parts[0]}' in slide {slide_no+1}."
                     ) from ex
                 if len(parts) > 1:
                     namespace = self.namespace.copy()
                     context = {
                         "result": result,
-                        "presentation": outppt,
+                        "presentation": template_ppt,
                         "shape": shape,
                         "slide": slide,
                         "slide_no": slide_no,
@@ -160,7 +163,35 @@ class PPTXRenderer:
                                 paragraph, match_assignment.group(0), result
                             )
 
-        for slide_no, slide in enumerate(outppt.slides):
+        output_ppt = Presentation(self.template_path)
+        extra_namespace = {}
+        slides_managed = []
+        for slide_no, slide in enumerate(template_ppt.slides):
+            if slide_no in slides_managed:
+                # this slide has already been looped over
+                continue
+            slide_used = False
+            for loop_group in loop_groups:
+                if slide_no == loop_group["start"]:
+                    slide_used = True
+                    extra_namespace[slide_no] = {}
+                    for var_value in loop_group["iterable"]:
+                        extra_namespace[slide_no][loop_group["var"]] = var_value
+                        for loop_slide_no in range(
+                            loop_group["start"], loop_group["end"] + 1
+                        ):
+                            if loop_slide_no not in slides_managed:
+                                slides_managed.append(loop_slide_no)
+                            # get the slide from the template
+                            current_slide = template_ppt.slides[loop_slide_no]
+                            # add a copy of this slide to output_slides
+                            new_slide = copy_slide(output_ppt, current_slide)
+            if not slide_used:
+                # this slide is not part of a loop group
+                new_slide = copy_slide(output_ppt, slide)
+
+        for slide_no, slide in enumerate(output_ppt.slides):
+            self.namespace.update(extra_namespace.get(slide_no, {}))
             if slide.has_notes_slide:
                 python_code = re.search(
                     r"```python([\s\S]*)```",
@@ -171,4 +202,4 @@ class PPTXRenderer:
                     exec(python_code.group(1), self.namespace)
             #send list of shapes to handle_shapes function
             handle_shapes(list(slide.shapes))
-        outppt.save(output_path)
+        output_ppt.save(output_path)
