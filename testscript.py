@@ -1,7 +1,7 @@
 from pathlib import Path
 from pptx_renderer import PPTXRenderer
 
-p = PPTXRenderer("template.pptx")
+p = PPTXRenderer("newtemplate.pptx")
 
 someval = "hello"
 
@@ -15,9 +15,9 @@ mytable = [["a", "b", "c", "d", "e"]] * 10
 p.render(
     "output.pptx",
     {
-        "someval": someval,
-        "mymethod": mymethod,
+        "heading": "This is a heading",
+        "title": "This is a title",
         "myimage": myimage,
-        "mytable": mytable,
     },
+    loop_groups=[{"start": 3, "end": 3, "var": "i", "iterable": range(5)}],
 )

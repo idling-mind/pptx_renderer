@@ -172,13 +172,13 @@ class PPTXRenderer:
                 continue
             slide_used = False
             for loop_group in loop_groups:
-                if slide_no == loop_group["start"]:
+                if slide_no + 1 == loop_group["start"]:
                     slide_used = True
                     extra_namespace[slide_no] = {}
                     for var_value in loop_group["iterable"]:
                         extra_namespace[slide_no][loop_group["var"]] = var_value
                         for loop_slide_no in range(
-                            loop_group["start"], loop_group["end"] + 1
+                            loop_group["start"] - 1, loop_group["end"]
                         ):
                             if loop_slide_no not in slides_managed:
                                 slides_managed.append(loop_slide_no)
