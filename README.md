@@ -132,7 +132,7 @@ from pathlib import Path
 from pptx_renderer import PPTXRenderer
 p = PPTXRenderer("template.pptx")
 
-images = Path(r"C:\Users\yy96968\Downloads\stickers").glob("*.png")
+images = Path("path/to/images").glob("*.png")
 loop_groups = [
     {
         "start": 0,
