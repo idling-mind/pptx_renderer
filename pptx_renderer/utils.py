@@ -63,7 +63,7 @@ def fix_quotes(input_string: str) -> str:
         .replace("”", '"')
     )
 
-def copy_slide(source_ppt, target_ppt, slide):
+def copy_slide(source_ppt: Presentation, target_ppt: Presentation, slide: Slide) -> Slide:
     """Duplicate each slide in prs2 and "moves" it into prs1.
     Adds slides to the end of the presentation
 
