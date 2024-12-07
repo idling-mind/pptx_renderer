@@ -198,10 +198,6 @@ class PPTXRenderer:
             if not slide_used:
                 # this slide is not part of a loop group
                 new_slide = copy_slide(template_ppt, output_ppt, slide)
-        print(self.namespace)
-        print("\n"*10)
-        print(extra_namespace)
-        print("\n"*10)
         for slide_no, slide in enumerate(output_ppt.slides):
             self.namespace.update(extra_namespace.get(slide_no, {}))
             if slide.has_notes_slide:
