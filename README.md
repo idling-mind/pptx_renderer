@@ -109,3 +109,43 @@ myarr = np.array([[1, 2], [3, 4]])
 
 And in the slide, create a rectangluar shape and add the text `{{{myarr:table()}}}`
 and a text box with the text `The determinant of the array is {{{np.linalg.det(myarr)}}}`
+
+## Repeating slides
+
+If you define `loop_groups` keyword argument as part of render method, you can
+repeat groups of slides. The value of `loop_groups` should be a list of dictionaries.
+Each dictionary should have the following keys
+- `start`: The slide number where the loop should start
+- `end`: The slide number where the loop should end
+- `iterable`: The iterable which should be looped over.
+- `variable`: The name of the variable which will be available inside the loop.
+
+For example, if you want to insert all images from a folder into a ppt, one image
+per slide, you can do the following.
+
+Create a template ppt with a single slide which contains a rectangle shape where
+the image should be inserted. Then insert a placeholder text in the format
+`{{{path_to_image:image()}}}` inside the shape. Then you can use the following
+
+```python
+from pathlib import Path
+from pptx_renderer import PPTXRenderer
+p = PPTXRenderer("template.pptx")
+
+images = Path(r"C:\Users\yy96968\Downloads\stickers").glob("*.png")
+loop_groups = [
+    {
+        "start": 0,
+        "end": 0,
+        "iterable": images,
+        "variable": "path_to_image"
+    }
+]
+
+p.render(
+    "output.pptx",
+    loop_groups = loop_groups
+)
+```
+
+This will create a new ppt with each image from the folder inserted into a new slide.
