@@ -88,8 +88,12 @@ def copy_placeholder_text(source_placeholder, target_placeholder):
     target_text_frame = target_placeholder.text_frame
     target_text_frame.clear()  # Clear any existing text
 
-    for paragraph in source_placeholder.text_frame.paragraphs:
-        new_paragraph = target_text_frame.add_paragraph()
+    for i, paragraph in enumerate(source_placeholder.text_frame.paragraphs):
+        if i == 0:
+            # First paragraph is already there
+            new_paragraph = target_text_frame.paragraphs[0]
+        else:
+            new_paragraph = target_text_frame.add_paragraph()
         new_paragraph.level = paragraph.level
 
         # Copy paragraph formatting
@@ -133,12 +137,28 @@ def copy_slide(source_ppt: Presentation, target_ppt: Presentation, slide: Slide)
     target_ppt_layouts = [list(master.slide_layouts) for master in target_ppt.slide_masters]
     new_slide = target_ppt.slides.add_slide(target_ppt_layouts[master_index][layout_index])
     for new_ph, old_ph in zip(new_slide.placeholders, slide.placeholders):
+        new_ph.height = old_ph.height
+        new_ph.width = old_ph.width
+        new_ph.left = old_ph.left
+        new_ph.top = old_ph.top
         copy_placeholder_text(old_ph, new_ph)
     for shape in slide.shapes:
         if shape.is_placeholder:
             continue
         newel = copy.deepcopy(shape.element)
         new_slide.shapes._spTree.insert_element_before(newel, "p:extLst")
+    # copy slide notes
+    if slide.notes_slide:
+        for new_ph, old_ph in zip(
+            new_slide.notes_slide.placeholders, slide.notes_slide.placeholders
+        ):
+            copy_placeholder_text(old_ph, new_ph)
+        new_slide_notes = new_slide.notes_slide
+        for shape in slide.notes_slide.placeholders:
+            if shape.is_placeholder:
+                continue
+            newel = copy.deepcopy(shape.element)
+            new_slide_notes.shapes._spTree.insert_element_before(newel, "p:extLst")
     return new_slide
 
 def clear_presentation(prs: Presentation):
