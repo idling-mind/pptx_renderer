@@ -12,7 +12,7 @@ from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 from .exceptions import RenderError
-from .utils import fix_quotes, para_text_replace, copy_slide
+from .utils import fix_quotes, para_text_replace, copy_slide, clear_presentation
 
 PLUGINS = [plugins.image, plugins.video, plugins.table]
 
@@ -70,6 +70,13 @@ class PPTXRenderer:
                 to be used in the template. Defaults to None.
             skip_failed (bool, optional): Dont raise an error if some of the
                 statements failed to render. Defaults to False.
+            loop_groups (list, optional): List of dictionaries containing the
+                following keys:
+                - start: Slide number where the loop starts
+                - end: Slide number where the loop ends
+                - var: Variable name to be used in the loop
+                - iterable: Iterable to loop over
+                Defaults to None.
 
         Returns:
             None
@@ -164,6 +171,7 @@ class PPTXRenderer:
                             )
 
         output_ppt = Presentation(self.template_path)
+        clear_presentation(output_ppt)
         extra_namespace = {}
         slides_managed = []
         for slide_no, slide in enumerate(template_ppt.slides):
@@ -174,9 +182,7 @@ class PPTXRenderer:
             for loop_group in loop_groups:
                 if slide_no + 1 == loop_group["start"]:
                     slide_used = True
-                    extra_namespace[slide_no] = {}
                     for var_value in loop_group["iterable"]:
-                        extra_namespace[slide_no][loop_group["var"]] = var_value
                         for loop_slide_no in range(
                             loop_group["start"] - 1, loop_group["end"]
                         ):
@@ -186,10 +192,16 @@ class PPTXRenderer:
                             current_slide = template_ppt.slides[loop_slide_no]
                             # add a copy of this slide to output_slides
                             new_slide = copy_slide(template_ppt, output_ppt, current_slide)
+                            extra_namespace[output_ppt.slides.index(new_slide)] = {
+                                loop_group["var"]: var_value
+                            }
             if not slide_used:
                 # this slide is not part of a loop group
                 new_slide = copy_slide(template_ppt, output_ppt, slide)
-
+        print(self.namespace)
+        print("\n"*10)
+        print(extra_namespace)
+        print("\n"*10)
         for slide_no, slide in enumerate(output_ppt.slides):
             self.namespace.update(extra_namespace.get(slide_no, {}))
             if slide.has_notes_slide:

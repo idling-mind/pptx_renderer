@@ -65,7 +65,16 @@ def fix_quotes(input_string: str) -> str:
 
 def copy_slide(source_ppt, target_ppt, slide):
     """Duplicate each slide in prs2 and "moves" it into prs1.
-    Adds slides to the end of the presentation"""
+    Adds slides to the end of the presentation
+
+    Args:
+        source_ppt (Presentation): Source presentation.
+        target_ppt (Presentation): Target presentation.
+        slide (Slide): Slide to copy.
+
+    Returns:
+        Slide: Slide that was copied
+    """
     layout = source_ppt.slide_layouts.index(slide.slide_layout)
     new_slide = target_ppt.slides.add_slide(target_ppt.slide_layouts[layout])
     for new_ph, old_ph in zip(new_slide.placeholders, slide.placeholders):
@@ -75,4 +84,11 @@ def copy_slide(source_ppt, target_ppt, slide):
             continue
         newel = copy.deepcopy(shape.element)
         new_slide.shapes._spTree.insert_element_before(newel, "p:extLst")
-    return target_ppt
+    return new_slide
+
+def clear_presentation(prs: Presentation):
+    """Clears all slides from a presentation"""
+    for i in range(len(prs.slides)-1, -1, -1): 
+        rId = prs.slides._sldIdLst[i].rId
+        prs.part.drop_rel(rId)
+        del prs.slides._sldIdLst[i]
