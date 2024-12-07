@@ -63,6 +63,60 @@ def fix_quotes(input_string: str) -> str:
         .replace("”", '"')
     )
 
+def find_layout_index(prs: Presentation, slide: Slide):
+    """Finds the index of the layout of a slide in a presentation
+
+    Args:
+        prs (Presentation): Presentation to find the layout index in.
+        slide (Slide): Slide to find the layout index of.
+
+    Returns:
+        int: Index of the layout of the slide in the presentation.
+    """
+    layouts_per_master = [list(master.slide_layouts) for master in prs.slide_masters]
+    slide_layout = slide.slide_layout
+    for outer_index, inner_list in enumerate(layouts_per_master):
+        if slide_layout in inner_list:
+            inner_index = inner_list.index(slide_layout)
+            return outer_index, inner_index
+    raise ValueError("Slide layout not found in presentation")
+
+def copy_placeholder_text(source_placeholder, target_placeholder):
+    if not source_placeholder.has_text_frame or not target_placeholder.has_text_frame:
+        return
+
+    target_text_frame = target_placeholder.text_frame
+    target_text_frame.clear()  # Clear any existing text
+
+    for paragraph in source_placeholder.text_frame.paragraphs:
+        new_paragraph = target_text_frame.add_paragraph()
+        new_paragraph.level = paragraph.level
+
+        # Copy paragraph formatting
+        new_paragraph.font.bold = paragraph.font.bold
+        new_paragraph.font.italic = paragraph.font.italic
+        new_paragraph.font.underline = paragraph.font.underline
+        new_paragraph.font.size = paragraph.font.size
+        if paragraph.font.color and hasattr(paragraph.font.color, "rgb"):
+            new_paragraph.font.color.rgb = paragraph.font.color.rgb
+        new_paragraph.alignment = paragraph.alignment
+
+        for run in paragraph.runs:
+            new_run = new_paragraph.add_run()
+            new_run.text = run.text
+
+            # Copy run formatting
+            new_run.font.bold = run.font.bold
+            new_run.font.italic = run.font.italic
+            new_run.font.underline = run.font.underline
+            new_run.font.size = run.font.size
+            if run.font.color and hasattr(run.font.color, "rgb") and run.font.color.rgb:
+                new_run.font.color.rgb = run.font.color.rgb
+            elif run.font.color and hasattr(run.font.color, "theme_color"):
+                new_run.font.color.theme_color = run.font.color.theme_color
+            if run.font.color and hasattr(run.font.color, "brightness") and run.font.color.brightness:
+                new_run.font.color.brightness = run.font.color.brightness
+
 def copy_slide(source_ppt: Presentation, target_ppt: Presentation, slide: Slide) -> Slide:
     """Duplicate each slide in prs2 and "moves" it into prs1.
     Adds slides to the end of the presentation
@@ -75,10 +129,11 @@ def copy_slide(source_ppt: Presentation, target_ppt: Presentation, slide: Slide)
     Returns:
         Slide: Slide that was copied
     """
-    layout = source_ppt.slide_layouts.index(slide.slide_layout)
-    new_slide = target_ppt.slides.add_slide(target_ppt.slide_layouts[layout])
+    master_index, layout_index = find_layout_index(source_ppt, slide)
+    target_ppt_layouts = [list(master.slide_layouts) for master in target_ppt.slide_masters]
+    new_slide = target_ppt.slides.add_slide(target_ppt_layouts[master_index][layout_index])
     for new_ph, old_ph in zip(new_slide.placeholders, slide.placeholders):
-        new_ph.text = old_ph.text
+        copy_placeholder_text(old_ph, new_ph)
     for shape in slide.shapes:
         if shape.is_placeholder:
             continue
