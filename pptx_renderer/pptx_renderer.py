@@ -88,8 +88,6 @@ class PPTXRenderer:
         if not methods_and_params:
             methods_and_params = {}
         self.namespace.update(methods_and_params)
-        if not loop_groups:
-            loop_groups = []
 
         #function to recurse through list of shapes
         #hand off to function to process text frames and tables
@@ -174,33 +172,36 @@ class PPTXRenderer:
                             )
 
         output_ppt = Presentation(self.template_path)
-        clear_presentation(output_ppt)
-        extra_namespace = {}
-        slides_managed = []
-        for slide_no, slide in enumerate(template_ppt.slides):
-            if slide_no in slides_managed:
-                # this slide has already been looped over
-                continue
-            slide_used = False
-            for loop_group in loop_groups:
-                if slide_no == loop_group["start"]:
-                    slide_used = True
-                    for variable_value in loop_group["iterable"]:
-                        for loop_slide_no in range(
-                            loop_group["start"], loop_group["end"] + 1
-                        ):
-                            if loop_slide_no not in slides_managed:
-                                slides_managed.append(loop_slide_no)
-                            # get the slide from the template
-                            current_slide = template_ppt.slides[loop_slide_no]
-                            # add a copy of this slide to output_slides
-                            new_slide = copy_slide(template_ppt, output_ppt, current_slide)
-                            extra_namespace[output_ppt.slides.index(new_slide)] = {
-                                loop_group["variable"]: variable_value
-                            }
-            if not slide_used:
-                # this slide is not part of a loop group
-                new_slide = copy_slide(template_ppt, output_ppt, slide)
+        if loop_groups:
+            clear_presentation(output_ppt)
+            extra_namespace = {}
+            slides_managed = []
+            for slide_no, slide in enumerate(template_ppt.slides):
+                if slide_no in slides_managed:
+                    # this slide has already been looped over
+                    continue
+                slide_used = False
+                for loop_group in loop_groups:
+                    if slide_no == loop_group["start"]:
+                        slide_used = True
+                        for variable_value in loop_group["iterable"]:
+                            for loop_slide_no in range(
+                                loop_group["start"], loop_group["end"] + 1
+                            ):
+                                if loop_slide_no not in slides_managed:
+                                    slides_managed.append(loop_slide_no)
+                                # get the slide from the template
+                                current_slide = template_ppt.slides[loop_slide_no]
+                                # add a copy of this slide to output_slides
+                                new_slide = copy_slide(template_ppt, output_ppt, current_slide)
+                                extra_namespace[output_ppt.slides.index(new_slide)] = {
+                                    loop_group["variable"]: variable_value
+                                }
+                if not slide_used:
+                    # this slide is not part of a loop group
+                    new_slide = copy_slide(template_ppt, output_ppt, slide)
+        else:
+            extra_namespace = {}
         for slide_no, slide in enumerate(output_ppt.slides):
             self.namespace.update(extra_namespace.get(slide_no, {}))
             if slide.has_notes_slide and slide.notes_slide.notes_text_frame:
