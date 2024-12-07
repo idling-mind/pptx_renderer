@@ -185,10 +185,10 @@ class PPTXRenderer:
                             # get the slide from the template
                             current_slide = template_ppt.slides[loop_slide_no]
                             # add a copy of this slide to output_slides
-                            new_slide = copy_slide(output_ppt, current_slide)
+                            new_slide = copy_slide(template_ppt, output_ppt, current_slide)
             if not slide_used:
                 # this slide is not part of a loop group
-                new_slide = copy_slide(output_ppt, slide)
+                new_slide = copy_slide(template_ppt, output_ppt, slide)
 
         for slide_no, slide in enumerate(output_ppt.slides):
             self.namespace.update(extra_namespace.get(slide_no, {}))

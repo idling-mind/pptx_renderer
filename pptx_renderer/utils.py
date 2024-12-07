@@ -63,27 +63,16 @@ def fix_quotes(input_string: str) -> str:
         .replace("”", '"')
     )
 
-
-def _get_blank_slide_layout(pres):
-    layout_items_count = [len(layout.placeholders) for layout in pres.slide_layouts]
-    min_items = min(layout_items_count)
-    blank_layout_id = layout_items_count.index(min_items)
-    layout_0 = pres.slide_layouts[blank_layout_id]
-    for shape in layout_0.shapes:
-        sp = shape.element
-        sp.getparent().remove(sp)
-    return layout_0
-
-def copy_slide(target_ppt, slide):
+def copy_slide(source_ppt, target_ppt, slide):
     """Duplicate each slide in prs2 and "moves" it into prs1.
     Adds slides to the end of the presentation"""
-    new_slide = target_ppt.slides.add_slide(_get_blank_slide_layout(target_ppt))
+    layout = source_ppt.slide_layouts.index(slide.slide_layout)
+    new_slide = target_ppt.slides.add_slide(target_ppt.slide_layouts[layout])
+    for new_ph, old_ph in zip(new_slide.placeholders, slide.placeholders):
+        new_ph.text = old_ph.text
     for shape in slide.shapes:
+        if shape.is_placeholder:
+            continue
         newel = copy.deepcopy(shape.element)
         new_slide.shapes._spTree.insert_element_before(newel, "p:extLst")
-    try:
-        new_slide.shapes.title.text = slide.shapes.title.text
-        new_slide.placeholders[0].text = slide.placeholders[0].text
-    except Exception as e:
-        print(f'Error "{e}", suppressing it...')
     return target_ppt
