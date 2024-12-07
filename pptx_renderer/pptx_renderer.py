@@ -74,16 +74,19 @@ class PPTXRenderer:
                 following keys:
                 - start: Slide number where the loop starts
                 - end: Slide number where the loop ends
-                - var: Variable name to be used in the loop
+                - variable: Variable name to be used in the loop
                 - iterable: Iterable to loop over
                 Defaults to None.
 
         Returns:
             None
         """
+        self.template_path = str(self.template_path)
         if not Path(self.template_path).exists():
             raise (FileNotFoundError(f"{self.template_path} not found"))
         template_ppt = Presentation(self.template_path)
+        if not methods_and_params:
+            methods_and_params = {}
         self.namespace.update(methods_and_params)
         if not loop_groups:
             loop_groups = []
@@ -180,11 +183,11 @@ class PPTXRenderer:
                 continue
             slide_used = False
             for loop_group in loop_groups:
-                if slide_no + 1 == loop_group["start"]:
+                if slide_no == loop_group["start"]:
                     slide_used = True
-                    for var_value in loop_group["iterable"]:
+                    for variable_value in loop_group["iterable"]:
                         for loop_slide_no in range(
-                            loop_group["start"] - 1, loop_group["end"]
+                            loop_group["start"], loop_group["end"] + 1
                         ):
                             if loop_slide_no not in slides_managed:
                                 slides_managed.append(loop_slide_no)
@@ -193,14 +196,14 @@ class PPTXRenderer:
                             # add a copy of this slide to output_slides
                             new_slide = copy_slide(template_ppt, output_ppt, current_slide)
                             extra_namespace[output_ppt.slides.index(new_slide)] = {
-                                loop_group["var"]: var_value
+                                loop_group["variable"]: variable_value
                             }
             if not slide_used:
                 # this slide is not part of a loop group
                 new_slide = copy_slide(template_ppt, output_ppt, slide)
         for slide_no, slide in enumerate(output_ppt.slides):
             self.namespace.update(extra_namespace.get(slide_no, {}))
-            if slide.has_notes_slide:
+            if slide.has_notes_slide and slide.notes_slide.notes_text_frame:
                 python_code = re.search(
                     r"```python([\s\S]*)```",
                     fix_quotes(slide.notes_slide.notes_text_frame.text),
