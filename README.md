@@ -5,6 +5,8 @@ You can insert placeholders in the ppt and also write python code in the ppt's
 notes and use either a python function or an equivalent commandline tool to
 convert it into an output rendered presentation.
 
+[Documentation](https://pptx-renderer.readthedocs.io/en)
+
 ## Installation
 ```console
 pip install pptx-renderer
