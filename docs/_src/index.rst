@@ -65,6 +65,7 @@ See :ref:`command-line`
    usage
    commandline
    api
+   history
 
 
 Indices and tables
