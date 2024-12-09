@@ -245,7 +245,7 @@ def copy_slide(source_ppt: Presentation, target_ppt: Presentation, slide: Slide)
         for new_ph, old_ph in zip(
             new_slide.notes_slide.placeholders, slide.notes_slide.placeholders
         ):
-            copy_text_frame(old_ph, new_ph)
+            copy_text_frame(old_ph.text_frame, new_ph.text_frame)
         new_slide_notes = new_slide.notes_slide
         for shape in slide.notes_slide.placeholders:
             if shape.is_placeholder:
