@@ -1,7 +1,9 @@
 import copy
+import io
 
 from pptx.presentation import Presentation
 from pptx.slide import Slide
+from pptx.shapes.group import GroupShape
 
 
 def para_text_replace(para, find_string, replace_string):
@@ -81,14 +83,97 @@ def find_layout_index(prs: Presentation, slide: Slide):
             return outer_index, inner_index
     raise ValueError("Slide layout not found in presentation")
 
-def copy_placeholder_text(source_placeholder, target_placeholder):
-    if not source_placeholder.has_text_frame or not target_placeholder.has_text_frame:
+def copy_table(source_shape, target_slide):
+    source_table = source_shape.table
+    # Get the dimensions of the source table
+    rows = len(source_table.rows)
+    cols = len(source_table.columns)
+
+    # Add a new table to the target slide with the same dimensions
+    left = source_shape.left
+    top = source_shape.top
+    width = source_shape.width
+    height = source_shape.height
+    target_table = target_slide.shapes.add_table(
+        rows, cols, left, top, width, height
+    ).table
+
+    # Copy the content and formatting of each cell
+    for row_idx in range(rows):
+        for col_idx in range(cols):
+            source_cell = source_table.cell(row_idx, col_idx)
+            target_cell = target_table.cell(row_idx, col_idx)
+
+            copy_text_frame(source_cell.text_frame, target_cell.text_frame)
+
+
+def copy_shapes(shapes, target_slide, ignore_placeholders=True):
+    """Copy shapes from one slide to another
+
+    Args:
+        shapes (list): List of shapes to copy.
+        target_slide (Slide): Slide to copy the shapes to.
+        ignore_placeholders (bool, optional): Ignore placeholders when copying shapes. Defaults to True.
+
+    Returns:
+        None
+    """
+    # Copy all existing shapes
+    for shape in shapes:
+        if shape.is_placeholder and ignore_placeholders:
+            continue
+        if isinstance(shape, GroupShape):
+            group = target_slide.shapes.add_group_shape()
+            group.name = shape.name
+            group.left = shape.left
+            group.top = shape.top
+            group.width = shape.width
+            group.height = shape.height
+            group.rotation = shape.rotation
+
+            # Recursive copy of contents
+            copy_shapes(shape.shapes, group)
+
+            # Fix offset
+            cur_el = group._element.xpath(".//p:grpSpPr")[0]
+            ref_el = shape._element.xpath(".//p:grpSpPr")[0]
+            parent = cur_el.getparent()
+            parent.insert(parent.index(cur_el) + 1, copy.deepcopy(ref_el))
+            parent.remove(cur_el)
+
+            result = group
+        elif hasattr(shape, "image"):
+            # Get image contents
+            content = io.BytesIO(shape.image.blob)
+            result = target_slide.shapes.add_picture(
+                content, shape.left, shape.top, shape.width, shape.height
+            )
+            result.name = shape.name
+            result.crop_left = shape.crop_left
+            result.crop_right = shape.crop_right
+            result.crop_top = shape.crop_top
+            result.crop_bottom = shape.crop_bottom
+        elif hasattr(shape, "has_chart") and shape.has_chart:
+            pass
+        elif hasattr(shape, "has_table") and shape.has_table:
+            # copy table style
+            copy_table(shape, target_slide)
+        else:
+            newel = copy.deepcopy(shape.element)
+            target_slide.shapes._spTree.insert_element_before(newel, "p:extLst")
+            result = target_slide.shapes[-1]
+            if shape.has_text_frame:
+                copy_text_frame(shape.text_frame, result.text_frame)
+
+
+def copy_text_frame(source_text_frame, target_text_frame):
+    try:
+        target_text_frame.clear()  # Clear any existing text
+    except AttributeError:
+        pass  # Text frame is not clearable
+    if not hasattr(source_text_frame, "paragraphs"):
         return
-
-    target_text_frame = target_placeholder.text_frame
-    target_text_frame.clear()  # Clear any existing text
-
-    for i, paragraph in enumerate(source_placeholder.text_frame.paragraphs):
+    for i, paragraph in enumerate(source_text_frame.paragraphs):
         if i == 0:
             # First paragraph is already there
             new_paragraph = target_text_frame.paragraphs[0]
@@ -120,6 +205,12 @@ def copy_placeholder_text(source_placeholder, target_placeholder):
                 new_run.font.color.theme_color = run.font.color.theme_color
             if run.font.color and hasattr(run.font.color, "brightness") and run.font.color.brightness:
                 new_run.font.color.brightness = run.font.color.brightness
+            if (
+                hasattr(run, "hyperlink")
+                and run.hyperlink
+                and hasattr(run.hyperlink, "address")
+            ):
+                new_run.hyperlink.address = run.hyperlink.address
 
 def copy_slide(source_ppt: Presentation, target_ppt: Presentation, slide: Slide) -> Slide:
     """Duplicate each slide in prs2 and "moves" it into prs1.
@@ -141,18 +232,20 @@ def copy_slide(source_ppt: Presentation, target_ppt: Presentation, slide: Slide)
         new_ph.width = old_ph.width
         new_ph.left = old_ph.left
         new_ph.top = old_ph.top
-        copy_placeholder_text(old_ph, new_ph)
-    for shape in slide.shapes:
-        if shape.is_placeholder:
+        if not old_ph.has_text_frame or not new_ph.has_text_frame:
             continue
-        newel = copy.deepcopy(shape.element)
-        new_slide.shapes._spTree.insert_element_before(newel, "p:extLst")
+        if not hasattr(old_ph.text_frame, "paragraphs") or not hasattr(
+            new_ph.text_frame, "paragraphs"
+        ):
+            continue
+        copy_text_frame(old_ph.text_frame, new_ph.text_frame)
+    copy_shapes(slide.shapes, new_slide, ignore_placeholders=True)
     # copy slide notes
     if slide.notes_slide:
         for new_ph, old_ph in zip(
             new_slide.notes_slide.placeholders, slide.notes_slide.placeholders
         ):
-            copy_placeholder_text(old_ph, new_ph)
+            copy_text_frame(old_ph, new_ph)
         new_slide_notes = new_slide.notes_slide
         for shape in slide.notes_slide.placeholders:
             if shape.is_placeholder:
